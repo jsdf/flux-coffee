@@ -1,5 +1,6 @@
-I've adapted the dispatcher from the React TodoMVC example.
+# Implementing Flux in CoffeeScript
 
+I've adapted the dispatcher from the React TodoMVC example.
 
 I've chosen to use the Bluebird promise library, though any library or polyfill
 for the standard would work.
