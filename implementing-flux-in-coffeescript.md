@@ -1,6 +1,11 @@
 # Implementing Flux in CoffeeScript
 
-I've adapted the dispatcher from the React TodoMVC example.
+The starting point for this code was the React TodoMVC example, and it has been
+adapted to take advantage of some of CoffeeScript's metaprogramming and DSL
+sugar.
+
+## [dispatcher.coffee](dispatcher.coffee)
+The Dispatcher in Flux is a singleton, against which the stores register handlers.
 
 I've chosen to use the Bluebird promise library, though any library or polyfill
 for the standard would work.
@@ -61,6 +66,11 @@ an array of store objects as dependencies.
     Promise.all(selectedPromises).then(handler)
 ```
 
+
+
+
+## [store.coffee](store.coffee)
+
 We implement a base class for the stores, which can be watched for changes.
 ```coffee
 extend = require 'xtend/mutable'
@@ -81,16 +91,17 @@ class Store
 ```
 
 Taking advantage of CoffeeScript's executable class bodies, a class method
-is provided for convenience when defining actions on Store subclasses.
+`@action` is provided for convenience when defining actions on Store subclasses.
 ```coffee
   @action: (name, handler) ->
     @actions ?= {}
     @actions[name] = handler.bind(@)
 ```
-The `receiveDispatch` method which the store provides to the dispatcher catches
-errors thrown in the handlers. `false` is returned for an error to cause the
-promise for this store to reject. If the handler returns a promise it is passed
-on, otherwise true is returned to resolve the promise in the dispatcher.
+The `receiveDispatch` method is provided by the store to be bound by the
+dispatcher. It catches errors thrown in the handlers, returning `false` to cause
+the corresponding dispatch promise for this store to reject. If the handler
+returns a promise itself (eg. created by `waitFor`) it is passed on, otherwise
+`true` is returned to resolve the corresponding promise in the dispatcher.
 ```coffee
   @receiveDispatch: ({action} = payload) ->
     actionHandler = @actions[action.actionType]
@@ -100,7 +111,91 @@ on, otherwise true is returned to resolve the promise in the dispatcher.
       catch err
         false # reject promise
       finally
-        result or true # resolve with promise returned by handler
+        result or true # resolve with promise returned by handler (or true)
     else
-      true # nothing to do, resolve promise
+      true # nothing to do for this store, resolve promise
+```
+
+Now we have our Dispatcher singleton and Store base class, we can implement
+a concrete store with actions as an example of how these elements would be
+combined in a real application. For this example we'll implement a store
+representing a queue of notifications to be shown to the user.
+
+## [notification/store.coffee](example/notification/store.coffee)
+The notification store makes use of the dispatcher, which it gains access to
+via `require`, which returns a reference to the singleton.
+```coffee
+{after} = require 'method-combinators'
+findIndex = require 'find-index'
+
+Dispatcher = require 'flux-coffee/dispatcher'
+Store = require 'flux-coffee/store'
+```
+
+The actual notification data is stored inside the module closure but outside of
+the store singleton class so that it is not directly accessible by the rest of
+the application, and must instead be accessed via actions and getters.
+```coffee
+_notificationQueue = []
+```
+
+The concrete notification store subclasses `Store`, and provides a 'name'
+property, which is used to register it against the dispatcher.
+```coffee
+class NotificationStore extends Store
+  @name: 'NotificationStore'
+```
+`after`, from @raganwald's
+[method-combinators](https://github.com/raganwald/method-combinators),
+is used to create a decorator for the actions which trigger a change event.
+
+```coffee
+  # combinator to emit change event after handler
+  @withChange: after => @emitChange()
+```
+The `@action` class method is invoked in the executable class body to define
+actions with handlers for each of the actions the store can respond to.
+```coffee
+  @action 'NOTIFICATION_CREATE', @withChange (action) ->
+    _notificationQueue.push action.notification
+
+  @action 'NOTIFICATION_DESTROY', @withChange (action) ->
+    _notificationQueue.splice(findIndex(_notificationQueue, (item) -> item.id is action.id)), 1)
+```
+Additionally, a getter is provided to make relevant data accessible to the rest
+of the application.
+```coffee
+  @getCurrentNotification: -> _notificationQueue[0]
+```
+
+Finally, the store is registered with the dispatcher, so that it can respond to
+dispatched actions.
+```coffee
+Dispatcher.register NotificationStore
+```
+
+
+## [notification/actions.coffee](example/notification/actions.coffee)
+In addition to the store, a public API of semantic actions is provided for the
+rest of the application to use to manipulate the store.
+```coffee
+Dispatcher = require 'flux-coffee/dispatcher'
+
+class NotificationActions
+  @addNotification: (id, text) ->
+    payload =
+      action:
+        actionType: 'NOTIFICATION_CREATE'
+        id: id
+        text: text
+    Dispatcher.dispatch(payload)
+
+  @removeNotification: (id) ->
+    payload =
+      action:
+        actionType: 'NOTIFICATION_DESTROY'
+        id: id
+    Dispatcher.dispatch(payload)
+
+module.exports = NotificationActions
 ```

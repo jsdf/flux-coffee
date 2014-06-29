@@ -1,7 +1,7 @@
 {after} = require 'method-combinators'
 findIndex = require 'find-index'
 
-Dispatcher = require('flux-coffee/dispatcher')
+Dispatcher = require 'flux-coffee/dispatcher'
 Store = require 'flux-coffee/store'
 
 _notificationQueue = []
@@ -17,6 +17,8 @@ class NotificationStore extends Store
 
   @action 'NOTIFICATION_DESTROY', @withChange (action) ->
     _notificationQueue.splice(findIndex(_notificationQueue, (item) -> item.id is action.id)), 1)
+
+  @getCurrentNotification: -> _notificationQueue[0]
 
 # Register to handle all updates
 Dispatcher.register NotificationStore

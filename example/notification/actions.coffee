@@ -1,4 +1,4 @@
-Dispatcher = require('flux-coffee/dispatcher')
+Dispatcher = require 'flux-coffee/dispatcher'
 
 class NotificationActions
   @addNotification: (id, text) ->
@@ -15,3 +15,5 @@ class NotificationActions
         actionType: 'NOTIFICATION_DESTROY'
         id: id
     Dispatcher.dispatch(payload)
+
+module.exports = NotificationActions
