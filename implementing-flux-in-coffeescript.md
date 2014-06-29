@@ -1,7 +1,7 @@
 # Implementing Flux in CoffeeScript
 
-The starting point for this code was the React TodoMVC example, and it has been
-adapted to take advantage of some of CoffeeScript's metaprogramming and DSL
+The starting point for this code was the Flux TodoMVC example, from which it has
+been adapted, taking advantage of some of CoffeeScript's metaprogramming/DSL
 sugar.
 
 ## [dispatcher.coffee](dispatcher.coffee)
