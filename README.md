@@ -182,7 +182,18 @@ dispatched actions.
 ```coffee
 Dispatcher.register NotificationStore
 ```
-Note that this registration is done in the
+Note that this registration is done in the module which defines the store, so
+the store's singleton object will come into existence the first time the module
+is required. The same goes for the dispatcher. In this way, Flux applications can be self-assembling, and no particular part of
+the application needs to 'own' any instances of the objects.
+
+In fact, multiple parts of the application can  share general-purpose stores,
+such as this example notification store, without even knowing that other parts
+of the application are making use of them. It doesn't make any difference which
+part of the application 'created' the store by using it first, and as the
+application's structure changes over time, parts of the application can add or
+remove dependencies on particular stores without needing to rework any
+setup/teardown code.
 
 ## [notification/actions.coffee](example/notification/actions.coffee)
 In addition to the store, a public API of semantic actions is provided for the
